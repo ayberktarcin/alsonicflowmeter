@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import struct
+from tabulate import tabulate
 
 # Project Specific Libraries
 '''
@@ -75,10 +76,10 @@ def parse_data(line):
     register_mapping = {
         0: ("Flow", "Int32", 0.1, "l/h"),
         2: ("Temp Internal", "Int16", 0.01, "°C"),
-        3: ("Temp Remote", "Int16", 0.01, "°C (Optional)"),
-        4: ("Temp Difference", "Int16", 0.01, "°C (Optional)"),
-        5: ("Pressure", "Int16", 0.001, "Bar (Optional)"),
-        6: ("Power", "Int32", 0.01, "kW (Optional)"),
+        3: ("Temp Remote", "Int16", 0.01, "°C "),
+        4: ("Temp Difference", "Int16", 0.01, "°C "),
+        5: ("Pressure", "Int16", 0.001, "Bar "),
+        6: ("Power", "Int32", 0.01, "kW "),
     }
 
     while offset < len(data):
@@ -96,7 +97,8 @@ def parse_data(line):
 
             # Apply resolution
             value *= resolution
-            fields[name] = f"{value} {unit}"
+            formatted_value = f"{value:.6g}"  # Use general format with max 6 significant digits
+            fields[name] = f"{formatted_value} {unit}"
         else:
             offset += 2  # Skip unrecognized register
 
@@ -171,14 +173,15 @@ def periodic_read():
     line = ser.readline()  # Read the response
     #print("RX:", " ".join([hex(i) for i in line]))
     try:
-        parsed = parse_data(line)
-        print("New Data:")
-        for key, value in parsed.items():
-            if isinstance(value, dict):
-                for sub_key, sub_value in value.items():
-                    print(f"  {sub_key}: {sub_value}")
-            else:
-                print(f"{key}: {value}")
+        parsed = parse_data(line)  # Parse the received data
+        data_fields = parsed.get("Data Fields", {})
+
+        # Prepare data for tabulate
+        headers = list(data_fields.keys())
+        values = list(data_fields.values())
+
+        # Print as a single row
+        print(tabulate([values], headers=headers, tablefmt="grid"))
     except Exception as e:
         print("Error:", e)
 
